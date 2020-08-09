@@ -7,7 +7,7 @@ import scipy.io as sio
 from multiprocessing import Pool as PPool
 from BatchCollection import *
 from sys import exit, argv
-from configparser import ConfigParser
+from configparser import ConfigParser, RawConfigParser
 from ast import literal_eval
 import logging as logger
 logger.basicConfig(level=logger.DEBUG)
@@ -15,12 +15,11 @@ logger.basicConfig(level=logger.DEBUG)
 if __name__ == '__main__':
     config = ConfigParser()
 
-    with open('config.ini', 'r', encoding='utf-8') as f:
-        config.read(f)
+    config.read('config.ini')
 
-    #Open collection and query lists
+    # Open collection and query lists
     logger.info("Reading Collections File")
-    collections_file = config.get('PARAMETERS','collectionFilePath')
+    collections_file = config.get('PARAMETERS', 'collectionFilePath')
     fin = open(collections_file, 'r')
     collectionFiles = [f.strip() for f in fin.readlines()]
     fin.close()
@@ -52,9 +51,8 @@ if __name__ == '__main__':
 
     #Define parameters
     hopSize = int(config.get('HYPERPARAMETERS', 'hopSize'))
-    Kappa = int(config.get('HYPERPARAMETERS', 'Kappa'))
+    Kappa = float(config.get('HYPERPARAMETERS', 'Kappa'))
     TempoLevels = literal_eval(config.get('HYPERPARAMETERS', 'TempoLevels')) #TempoLevels = [0] #Madmom only
-    logger.info('TempoLevels: {} Length {}'.format(TempoLevels, len(TempoLevels)))
 
     MFCCBeatsPerBlock = int(config.get('HYPERPARAMETERS','MFCCBeatsPerBlock'))
     DPixels = int(config.get('HYPERPARAMETERS', 'DPixels'))
