@@ -13,7 +13,10 @@ import logging as logger
 logger.basicConfig(level=logger.DEBUG)
 
 if __name__ == '__main__':
-    config = ConfigParser().read('config.ini')
+    config = ConfigParser()
+
+    with open('config.ini', 'r', encoding='utf-8') as f:
+        config.read(f)
 
     #Open collection and query lists
     logger.info("Reading Collections File")
