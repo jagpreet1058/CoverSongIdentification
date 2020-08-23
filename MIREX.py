@@ -7,10 +7,12 @@ import scipy.io as sio
 from multiprocessing import Pool as PPool
 from BatchCollection import *
 from sys import exit, argv
-from configparser import ConfigParser, RawConfigParser
+import pandas as pd
+import numpy as np
+from configparser import ConfigParser
 from ast import literal_eval
 import logging as logger
-logger.basicConfig(level=logger.DEBUG)
+logger.basicConfig(level=logger.INFO)
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -18,13 +20,13 @@ if __name__ == '__main__':
     config.read('config.ini')
 
     # Open collection and query lists
-    logger.info("Reading Collections File")
+    logger.info("--> Reading Collections File")
     collections_file = config.get('PARAMETERS', 'collectionFilePath')
     fin = open(collections_file, 'r')
     collectionFiles = [f.strip() for f in fin.readlines()]
     fin.close()
 
-    logger.info("Reading Query File")
+    logger.info("--> Reading Query File")
     query_file = config.get('PARAMETERS', 'queryFilePath')
     fin = open(query_file, 'r')
     queryFiles = [f.strip() for f in fin.readlines()]
@@ -44,7 +46,7 @@ if __name__ == '__main__':
         else:
             query2All[i] = collectionSet[queryFiles[i]]
 
-    logger.info("There are %i music items in Collections file"%len(allFiles))
+    logger.info("--> There are %i music items in Collections file"%len(allFiles))
 
     scratchDir = config.get('PARAMETERS', 'scratchDirectoryName')
     filenameOut = config.get('PARAMETERS', 'outputFileName')
@@ -76,11 +78,11 @@ if __name__ == '__main__':
 
     #Setup parallel pool
     NThreads = int(config.get('PARAMETERS', 'numberOfThreads'))
-    logger.info("Process will run with {} Threads".format(NThreads))
+    logger.info("--> Process will run with {} Threads".format(NThreads))
     parpool = PPool(NThreads)
 
     #Precompute beat intervals, MFCC, and HPCP Features for each song
-    logger.info("Precompute the features for each song")
+    logger.info("--> Precompute the features for each song")
     NF = len(allFiles)
     args = zip(allFiles, [scratchDir]*NF, [hopSize]*NF, [Kappa]*NF, [CSMTypes]*NF, [FeatureParams]*NF, [TempoLevels]*NF, [{}]*NF)
 
@@ -91,7 +93,7 @@ if __name__ == '__main__':
     parpool.map(precomputeBatchFeatures, args)
 
     #Process blocks of similarity at a time
-    logger.info("Perform Similarity Analysis")
+    logger.info("--> Perform Similarity Analysis")
     N = len(allFiles)
     NPerBlock = int(config.get('PARAMETERS', 'numberPerBlock'))
     ranges = getBatchBlockRanges(N, NPerBlock)
@@ -100,7 +102,7 @@ if __name__ == '__main__':
     Ds = assembleBatchBlocks(list(CSMTypes) + ['SNF'], res, ranges, N)
 
     #Perform late fusion
-    logger.info("Performing Late Fusion")
+    logger.info("--> Performing Late Fusion")
     numberOfNearestNeighbor = int(config.get('HYPERPARAMETERS', 'numberOfNearestNeighbor'))
     numberOfIter = int(config.get('HYPERPARAMETERS', 'numberOfIter'))
     Scores = [1.0/(1.0+Ds[F]) for F in Ds.keys()]
@@ -109,11 +111,11 @@ if __name__ == '__main__':
 
     #Save full distance matrix in case there's a problem
     #with the text output
-    logger.info("Save the Matrix form of results")
+    logger.info("--> Save the Matrix form of results")
     sio.savemat("%s/D.mat"%scratchDir, Ds)
 
     #Save the results to a text file
-    logger.info("Generating Final Results")
+    logger.info("--> Generating Final Results")
     fout = open(filenameOut, "w")
     fout.write("Early+Late SNF Chris Tralie 2017\n")
     for i in range(len(allFiles)):
@@ -128,3 +130,21 @@ if __name__ == '__main__':
         for j in range(len(allFiles)):
             fout.write("\t%g"%(D[idx, j]))
     fout.close()
+
+    #Save the top results in CSV
+    logger.info("--> Generating Final Top Results")
+    topresults = pd.DataFrame()
+
+    for i in range(len(queryFiles)):
+        queryFileName = queryFiles[i]
+        idx = query2All[i]
+        disSimilarityValues = []
+        for j in range(len(allFiles)):
+            if j != idx:
+                disSimilarityValues.append(D[idx, j])
+        idx_min = np.argmin(disSimilarityValues)
+        matchedFileName = allFiles[np.int(idx_min)]
+        topresults.loc[i,'QueryFileName'] = queryFileName
+        topresults.loc[i, 'MatchedFileName'] = matchedFileName
+
+    topresults.to_csv('TopResults.csv',header=True, index=False)
