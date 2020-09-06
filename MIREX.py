@@ -12,6 +12,7 @@ import numpy as np
 from configparser import ConfigParser
 from ast import literal_eval
 import logging as logger
+import statistics
 logger.basicConfig(level=logger.INFO)
 
 if __name__ == '__main__':
@@ -141,9 +142,17 @@ if __name__ == '__main__':
         disSimilarityValues = []
         for j in range(len(allFiles)-len(queryFiles)-1):
             disSimilarityValues.append(D[idx, j])
-        idx_min = np.argmin(disSimilarityValues)
-        matchedFileName = allFiles[np.int(idx_min)]
-        topresults.loc[i,'QueryFileName'] = queryFileName
-        topresults.loc[i, 'MatchedFileName'] = matchedFileName
+        std = statistics.stdev(disSimilarityValues)
+        mean = statistics.mean(disSimilarityValues)
+
+        best_match_std = (mean - min(disSimilarityValues)) / std
+        if best_match_std >= float(config.get('PARAMETERS', 'matchingThreshold')):
+            idx_min = np.argmin(disSimilarityValues)
+            matchedFileName = allFiles[np.int(idx_min)]
+            topresults.loc[i, 'QueryFileName'] = queryFileName
+            topresults.loc[i, 'MatchedFileName'] = matchedFileName
+        else:
+            topresults.loc[i, 'QueryFileName'] = queryFileName
+            topresults.loc[i, 'MatchedFileName'] = 'Not Found'
 
     topresults.to_csv('TopResults.csv',header=True, index=False)
