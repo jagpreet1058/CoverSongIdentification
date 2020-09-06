@@ -153,6 +153,6 @@ if __name__ == '__main__':
             topresults.loc[i, 'MatchedFileName'] = matchedFileName
         else:
             topresults.loc[i, 'QueryFileName'] = queryFileName
-            topresults.loc[i, 'MatchedFileName'] = 'Not Found'
+            topresults.loc[i, 'MatchedFileName'] = 'Low Confidence {}'.format(best_match_std)
 
     topresults.to_csv('TopResults.csv',header=True, index=False)
