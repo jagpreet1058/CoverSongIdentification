@@ -139,9 +139,8 @@ if __name__ == '__main__':
         queryFileName = queryFiles[i]
         idx = query2All[i]
         disSimilarityValues = []
-        for j in range(len(allFiles)):
-            if j != idx:
-                disSimilarityValues.append(D[idx, j])
+        for j in range(len(allFiles)-len(queryFiles)-1):
+            disSimilarityValues.append(D[idx, j])
         idx_min = np.argmin(disSimilarityValues)
         matchedFileName = allFiles[np.int(idx_min)]
         topresults.loc[i,'QueryFileName'] = queryFileName
